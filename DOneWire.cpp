@@ -22,26 +22,26 @@ DOneWire::DOneWire(uint8_t address)
 }
 
 DOneWire::DOneWire(uint8_t sdaPin, uint8_t sclPin)
- {
- 	// sdaPin and sclPin can override the default SCL and SDA
- 	// pins on some hardware
- 	// Address is determined by two pins on the DS2482 AD1/AD0
- 	// Pass 0b00, 0b01, 0b10 or 0b11
- 	mAddress = 0x18;
- 	mError = 0;
- 	Wire.begin(sdaPin, sclPin);
- }
+{
+	// sdaPin and sclPin can override the default SCL and SDA
+	// pins on some hardware
+	// Address is determined by two pins on the DS2482 AD1/AD0
+	// Pass 0b00, 0b01, 0b10 or 0b11
+	mAddress = 0x18;
+	mError = 0;
+	Wire.begin(sdaPin, sclPin);
+}
 
- DOneWire::DOneWire(uint8_t sdaPin, uint8_t sclPin, uint8_t address)
- {
- 	// sdaPin and sclPin can override the default SCL and SDA
- 	// pins on some hardware
- 	// Address is determined by two pins on the DS2482 AD1/AD0
- 	// Pass 0b00, 0b01, 0b10 or 0b11
- 	mAddress = 0x18 | address;
- 	mError = 0;
- 	Wire.begin(sdaPin, sclPin);
- }
+DOneWire::DOneWire(uint8_t sdaPin, uint8_t sclPin, uint8_t address)
+{
+	// sdaPin and sclPin can override the default SCL and SDA
+	// pins on some hardware
+	// Address is determined by two pins on the DS2482 AD1/AD0
+	// Pass 0b00, 0b01, 0b10 or 0b11
+	mAddress = 0x18 | address;
+	mError = 0;
+	Wire.begin(sdaPin, sclPin);
+}
 
 uint8_t DOneWire::getAddress()
 {
@@ -66,12 +66,12 @@ uint8_t DOneWire::end()
 
 void DOneWire::writeByte(uint8_t data)
 {
-	Wire.write(data); 
+	Wire.write(data);
 }
 
 uint8_t DOneWire::readByte()
 {
-	Wire.requestFrom(mAddress,1u);
+	Wire.requestFrom(mAddress, 1u);
 	return Wire.read();
 }
 
@@ -128,7 +128,7 @@ void DOneWire::setStrongPullup()
 
 void DOneWire::clearStrongPullup()
 {
-	writeConfig(readConfig() & !DS2482_CONFIG_SPU);
+	writeConfig(readConfig() & ~(1 << 2));
 }
 
 // Churn until the busy bit in the status register is clear
@@ -136,7 +136,7 @@ uint8_t DOneWire::waitOnBusy()
 {
 	uint8_t status;
 
-	for(int i=1000; i>0; i--)
+	for (int i = 1000; i > 0; i--)
 	{
 		status = readStatus();
 		if (!(status & DS2482_STATUS_BUSY))
@@ -159,16 +159,16 @@ void DOneWire::writeConfig(uint8_t config)
 	begin();
 	writeByte(DS2482_COMMAND_WRITECONFIG);
 	// Write the 4 bits and the complement 4 bits
-	writeByte(config | (~config)<<4);
+	writeByte(config | (~config) << 4);
 	end();
-	
+
 	// This should return the config bits without the complement
 	if (readByte() != config)
 		mError = DS2482_ERROR_CONFIG;
 }
 
 // Generates a 1-Wire reset/presence-detect cycle (Figure 4) at the 1-Wire line. The state
-// of the 1-Wire line is sampled at tSI and tMSP and the result is reported to the host 
+// of the 1-Wire line is sampled at tSI and tMSP and the result is reported to the host
 // processor through the Status Register, bits PPD and SD.
 uint8_t DOneWire::wireReset()
 {
@@ -216,7 +216,7 @@ uint8_t DOneWire::wireReadByte()
 }
 
 // Generates a single 1-Wire time slot with a bit value “V” as specified by the bit byte at the 1-Wire line
-// (see Table 2). A V value of 0b generates a write-zero time slot (Figure 5); a V value of 1b generates a 
+// (see Table 2). A V value of 0b generates a write-zero time slot (Figure 5); a V value of 1b generates a
 // write-one time slot, which also functions as a read-data time slot (Figure 6). In either case, the logic
 // level at the 1-Wire line is tested at tMSR and SBR is updated.
 void DOneWire::wireWriteBit(uint8_t data, uint8_t power)
@@ -247,28 +247,27 @@ void DOneWire::wireSkip()
 void DOneWire::wireSelect(const uint8_t rom[8])
 {
 	wireWriteByte(WIRE_COMMAND_SELECT);
-	for (int i=0;i<8;i++)
+	for (int i = 0; i < 8; i++)
 		wireWriteByte(rom[i]);
 }
 
 //  1-Wire reset seatch algorithm
 void DOneWire::wireResetSearch()
 {
-	searchLastDiscrepancy = 0;
+	searchLastDiscrepancy = -1;
 	searchLastDeviceFlag = 0;
 
 	for (int i = 0; i < 8; i++)
 	{
 		searchAddress[i] = 0;
 	}
-
 }
 
 // Perform a search of the 1-Wire bus
 uint8_t DOneWire::wireSearch(uint8_t *address)
 {
 	uint8_t direction;
-	uint8_t last_zero=0;
+	int8_t last_zero = -1;
 
 	if (searchLastDeviceFlag)
 		return 0;
@@ -280,9 +279,9 @@ uint8_t DOneWire::wireSearch(uint8_t *address)
 
 	wireWriteByte(WIRE_COMMAND_SEARCH);
 
-	for(uint8_t i=0;i<64;i++)
+	for (uint8_t i = 0; i < 64; i++)
 	{
-		int searchByte = i / 8; 
+		int searchByte = i / 8;
 		int searchBit = 1 << i % 8;
 
 		if (i < searchLastDiscrepancy)
@@ -318,15 +317,14 @@ uint8_t DOneWire::wireSearch(uint8_t *address)
 			searchAddress[searchByte] |= searchBit;
 		else
 			searchAddress[searchByte] &= ~searchBit;
-
 	}
 
 	searchLastDiscrepancy = last_zero;
 
-	if (!last_zero)
+	if (last_zero == -1)
 		searchLastDeviceFlag = 1;
 
-	for (uint8_t i=0; i<8; i++)
+	for (uint8_t i = 0; i < 8; i++)
 		address[i] = searchAddress[i];
 
 	return 1;
@@ -336,22 +334,22 @@ uint8_t DOneWire::wireSearch(uint8_t *address)
 // This table comes from Dallas sample code where it is freely reusable,
 // though Copyright (C) 2000 Dallas Semiconductor Corporation
 static const uint8_t PROGMEM dscrc_table[] = {
-      0, 94,188,226, 97, 63,221,131,194,156,126, 32,163,253, 31, 65,
-    157,195, 33,127,252,162, 64, 30, 95,  1,227,189, 62, 96,130,220,
-     35,125,159,193, 66, 28,254,160,225,191, 93,  3,128,222, 60, 98,
-    190,224,  2, 92,223,129, 99, 61,124, 34,192,158, 29, 67,161,255,
-     70, 24,250,164, 39,121,155,197,132,218, 56,102,229,187, 89,  7,
-    219,133,103, 57,186,228,  6, 88, 25, 71,165,251,120, 38,196,154,
-    101, 59,217,135,  4, 90,184,230,167,249, 27, 69,198,152,122, 36,
-    248,166, 68, 26,153,199, 37,123, 58,100,134,216, 91,  5,231,185,
-    140,210, 48,110,237,179, 81, 15, 78, 16,242,172, 47,113,147,205,
-     17, 79,173,243,112, 46,204,146,211,141,111, 49,178,236, 14, 80,
-    175,241, 19, 77,206,144,114, 44,109, 51,209,143, 12, 82,176,238,
-     50,108,142,208, 83, 13,239,177,240,174, 76, 18,145,207, 45,115,
-    202,148,118, 40,171,245, 23, 73,  8, 86,180,234,105, 55,213,139,
-     87,  9,235,181, 54,104,138,212,149,203, 41,119,244,170, 72, 22,
-    233,183, 85, 11,136,214, 52,106, 43,117,151,201, 74, 20,246,168,
-    116, 42,200,150, 21, 75,169,247,182,232, 10, 84,215,137,107, 53};
+	0, 94, 188, 226, 97, 63, 221, 131, 194, 156, 126, 32, 163, 253, 31, 65,
+	157, 195, 33, 127, 252, 162, 64, 30, 95, 1, 227, 189, 62, 96, 130, 220,
+	35, 125, 159, 193, 66, 28, 254, 160, 225, 191, 93, 3, 128, 222, 60, 98,
+	190, 224, 2, 92, 223, 129, 99, 61, 124, 34, 192, 158, 29, 67, 161, 255,
+	70, 24, 250, 164, 39, 121, 155, 197, 132, 218, 56, 102, 229, 187, 89, 7,
+	219, 133, 103, 57, 186, 228, 6, 88, 25, 71, 165, 251, 120, 38, 196, 154,
+	101, 59, 217, 135, 4, 90, 184, 230, 167, 249, 27, 69, 198, 152, 122, 36,
+	248, 166, 68, 26, 153, 199, 37, 123, 58, 100, 134, 216, 91, 5, 231, 185,
+	140, 210, 48, 110, 237, 179, 81, 15, 78, 16, 242, 172, 47, 113, 147, 205,
+	17, 79, 173, 243, 112, 46, 204, 146, 211, 141, 111, 49, 178, 236, 14, 80,
+	175, 241, 19, 77, 206, 144, 114, 44, 109, 51, 209, 143, 12, 82, 176, 238,
+	50, 108, 142, 208, 83, 13, 239, 177, 240, 174, 76, 18, 145, 207, 45, 115,
+	202, 148, 118, 40, 171, 245, 23, 73, 8, 86, 180, 234, 105, 55, 213, 139,
+	87, 9, 235, 181, 54, 104, 138, 212, 149, 203, 41, 119, 244, 170, 72, 22,
+	233, 183, 85, 11, 136, 214, 52, 106, 43, 117, 151, 201, 74, 20, 246, 168,
+	116, 42, 200, 150, 21, 75, 169, 247, 182, 232, 10, 84, 215, 137, 107, 53};
 
 //
 // Compute a Dallas Semiconductor 8 bit CRC. These show up in the ROM
@@ -364,7 +362,8 @@ uint8_t DOneWire::crc8(const uint8_t *addr, uint8_t len)
 {
 	uint8_t crc = 0;
 
-	while (len--) {
+	while (len--)
+	{
 		crc = pgm_read_byte(dscrc_table + (crc ^ *addr++));
 	}
 	return crc;
@@ -377,13 +376,16 @@ uint8_t DOneWire::crc8(const uint8_t *addr, uint8_t len)
 uint8_t DOneWire::crc8(const uint8_t *addr, uint8_t len)
 {
 	uint8_t crc = 0;
-	
-	while (len--) {
+
+	while (len--)
+	{
 		uint8_t inbyte = *addr++;
-		for (uint8_t i = 8; i; i--) {
+		for (uint8_t i = 8; i; i--)
+		{
 			uint8_t mix = (crc ^ inbyte) & 0x01;
 			crc >>= 1;
-			if (mix) crc ^= 0x8C;
+			if (mix)
+				crc ^= 0x8C;
 			inbyte >>= 1;
 		}
 	}
@@ -427,11 +429,11 @@ void DOneWire::skip(void)
 	wireSkip();
 }
 
-// Write a byte. 
+// Write a byte.
 // Ignore the power bit
 void DOneWire::write(uint8_t v, uint8_t power)
 {
-	wireWriteByte(v, power);	
+	wireWriteByte(v, power);
 }
 
 // Read a byte.
@@ -462,39 +464,39 @@ bool DOneWire::selectChannel(uint8_t channel)
 
 	switch (channel)
 	{
-		case 0:
-		default:
-			ch = 0xf0;
-			ch_read = 0xb8;
-			break;
-		case 1:
-			ch = 0xe1;
-			ch_read = 0xb1;
-			break;
-		case 2:
-			ch = 0xd2;
-			ch_read = 0xaa;
-			break;
-		case 3:
-			ch = 0xc3;
-			ch_read = 0xa3;
-			break;
-		case 4:
-			ch = 0xb4;
-			ch_read = 0x9c;
-			break;
-		case 5:
-			ch = 0xa5;
-			ch_read = 0x95;
-			break;
-		case 6:
-			ch = 0x96;
-			ch_read = 0x8e;
-			break;
-		case 7:
-			ch = 0x87;
-			ch_read = 0x87;
-			break;
+	case 0:
+	default:
+		ch = 0xf0;
+		ch_read = 0xb8;
+		break;
+	case 1:
+		ch = 0xe1;
+		ch_read = 0xb1;
+		break;
+	case 2:
+		ch = 0xd2;
+		ch_read = 0xaa;
+		break;
+	case 3:
+		ch = 0xc3;
+		ch_read = 0xa3;
+		break;
+	case 4:
+		ch = 0xb4;
+		ch_read = 0x9c;
+		break;
+	case 5:
+		ch = 0xa5;
+		ch_read = 0x95;
+		break;
+	case 6:
+		ch = 0x96;
+		ch_read = 0x8e;
+		break;
+	case 7:
+		ch = 0x87;
+		ch_read = 0x87;
+		break;
 	};
 
 	waitOnBusy();
