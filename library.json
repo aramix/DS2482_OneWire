@@ -1,4 +1,7 @@
 {
   "name": "DS2482_OneWire",
-  "version": "0.0.0+2024032003515149"
+  "version": "0.0.0+2024032003515149",
+  "dependencies": {
+    "paulstoffregen/OneWire": "^2.3.5"
+  }
 }
